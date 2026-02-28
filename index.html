@@ -1040,10 +1040,34 @@ function cloudLoad(callback){
   _cloudLoading=true;_cloudError='';render();
   fetch(SCRIPT_URL+'?tab=compliance').then(function(r){return r.json();}).then(function(rows){
     _cloudLoading=false;
-    var arr=Array.isArray(rows)?rows:[];
+    var raw=Array.isArray(rows)?rows:[];
+    var arr=[];
+    raw.forEach(function(row){
+      if(!row)return;
+      // Already a parsed submission object
+      if(row._id||row.centerId){arr.push(row);return;}
+      // Sheet row object with named columns - extract JSON Data column
+      var jsonStr=row['JSON Data']||row['json_data']||row['data']||row['JSON_Data']||'';
+      // Sheet row as array - JSON is the last element
+      if(!jsonStr&&Array.isArray(row)){jsonStr=row[row.length-1]||'';}
+      if(jsonStr){
+        try{
+          var parsed=typeof jsonStr==='string'?JSON.parse(jsonStr):jsonStr;
+          if(parsed&&(parsed._id||parsed.centerId))arr.push(parsed);
+        }catch(e){}
+      }
+    });
     var localIds={};(state.submissions||[]).forEach(function(s){if(s._id)localIds[s._id]=true;});
-    arr.forEach(function(s){if(s._id&&!localIds[s._id]){state.submissions.push(s);localIds[s._id]=true;}});
-    saveState();_cloudSynced=true;if(callback)callback(arr);render();
+    var added=0;
+    arr.forEach(function(s){
+      if(s._id&&!localIds[s._id]){state.submissions.push(s);localIds[s._id]=true;added++;}
+      else if(!s._id){
+        var dupKey=(s.centerId||'')+'::'+( s.classroomId||'')+'::'+( s.inspectionDate||'')+'::'+( s.teacherName||'');
+        if(!localIds[dupKey]){s._id=dupKey;state.submissions.push(s);localIds[dupKey]=true;added++;}
+      }
+    });
+    if(added>0)saveState();
+    _cloudSynced=true;if(callback)callback(arr);render();
   }).catch(function(e){
     _cloudLoading=false;_cloudError='Could not connect to cloud. Showing local data only.';
     _cloudSynced=true;if(callback)callback([]);render();
