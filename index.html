@@ -1301,6 +1301,8 @@ function submitAdminToDashboard(){
 // ===== DASHBOARD =====
 var appMode='checker';
 var dashUser=null;
+var _lastSyncTime='';
+function refreshDash(){_cloudSynced=false;_lastSyncTime='';cloudLoad(function(){_lastSyncTime=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});render();});render();}
 var dashFilterCenter='';
 var dashExpandedRows={};
 var MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1363,7 +1365,7 @@ function dashDoLogin(){
   if(pin!==user.pin){err.textContent='Incorrect PIN. Please try again.';err.style.display='block';document.getElementById('dashLoginPin').value='';document.getElementById('dashLoginPin').focus();return;}
   dashUser=user;dashFilterCenter='';dashViewMonth=getDashCurrentMonth();dashExpandedRows={};
   try{localStorage.setItem('mi_cc_dash_user',user.id);}catch(e){}
-  _cloudSynced=false;cloudLoad(function(){render();});render();
+  _cloudSynced=false;_lastSyncTime='';cloudLoad(function(){_lastSyncTime=new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});render();});render();
 }
 function dashLogout(){dashUser=null;try{localStorage.removeItem('mi_cc_dash_user');}catch(e){}render();}
 
@@ -1371,8 +1373,8 @@ function renderDashboard(){
   if(!dashUser)return renderDashLogin();
   var syncBar='';
   if(_cloudLoading){return '<div style="text-align:center;padding:3rem;"><div style="font-size:2rem;margin-bottom:0.5rem;">☁️</div><div style="font-size:1rem;color:var(--brand);">Loading from cloud...</div></div>';}
-  if(_cloudError){syncBar='<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:#92400e;">⚠️ '+_cloudError+'</div>';}
-  else if(SCRIPT_URL&&_cloudSynced){syncBar='<div style="text-align:right;font-size:0.62rem;color:var(--text-light);margin-bottom:0.5rem;">☁️ Synced with cloud</div>';}
+  if(_cloudError){syncBar='<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:#92400e;">⚠️ '+_cloudError+' <button onclick="refreshDash()" style="margin-left:0.5rem;background:#f59e0b;color:white;border:none;border-radius:6px;padding:0.25rem 0.6rem;font-size:0.72rem;font-weight:800;cursor:pointer;">↺ Retry</button></div>';}
+  else if(SCRIPT_URL&&_cloudSynced){var lastSync=_lastSyncTime?(' · '+_lastSyncTime):'';syncBar='<div style="text-align:right;font-size:0.62rem;color:var(--text-light);margin-bottom:0.5rem;">☁️ Synced with cloud'+lastSync+' <button onclick="refreshDash()" style="margin-left:0.5rem;background:var(--brand-light);color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:0.15rem 0.5rem;font-size:0.65rem;font-weight:800;cursor:pointer;">↺ Refresh</button></div>';}
   return syncBar+renderDashMain();
 }
 
