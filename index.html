@@ -829,14 +829,14 @@ var CATEGORIES = [
     { id: 'no_trampoline', text: 'No trampolines or bounce houses', rule: 'R 400.8131(11)' },
     { id: 'no_teething', text: 'No teething necklaces, bracelets, or beads on children', rule: 'R 400.8131(12)', ageFilter: ['infant','toddler'] },
     { id: 'first_aid', text: 'First aid kit readily accessible to staff and securely stored out of reach of children', rule: 'R 400.8131(9)' },
-    { id: 'adult_seating', text: 'Rocking chair or comfortable adult-sized seating for 50% of staff providing infant/toddler care', rule: 'R 400.8131(10)', ageFilter: ['infant','toddler'] }
+    { id: 'adult_seating', text: 'Rocking chair or comfortable adult-sized seating physically present in the room (not in storage) for at least 50% of staff on duty providing infant/toddler care', rule: 'R 400.8131(10)', ageFilter: ['infant','toddler'] }
   ]},
   { id: 'sleeping', title: 'Sleeping & Rest Area', icon: '😴', color: '#8e44ad', items: [
     { id: 'cribs_for_infants', text: 'Cribs or portable cribs provided for all infants', rule: 'R 400.8134(3)', ageFilter: ['infant'] },
     { id: 'cribs_cpsc', text: 'Cribs/portable cribs comply with federal CPSC standards (manufactured after June 28, 2011 or with CPC)', rule: 'R 400.8134(10)', ageFilter: ['infant','toddler'] },
     { id: 'firm_mattress', text: 'Firm, tight-fitting waterproof mattress in each crib', rule: 'R 400.8134(11)', ageFilter: ['infant','toddler'] },
     { id: 'fitted_sheet', text: 'Tightly fitted bottom sheet covers crib mattress — no additional padding between sheet and mattress', rule: 'R 400.8134(12)', ageFilter: ['infant','toddler'] },
-    { id: 'no_soft_objects', text: 'No soft objects, bumper pads, stuffed toys, blankets, quilts in cribs with sleeping infants', rule: 'R 400.8134(13)', ageFilter: ['infant'] },
+    { id: 'no_soft_objects', text: 'No soft objects, bumper pads, stuffed toys, blankets, quilts, or swaddle wraps in cribs with sleeping infants — infants on back, unwrapped', rule: 'R 400.8134(13)', ageFilter: ['infant'] },
     { id: 'no_blankets_draped', text: 'No blankets, burp cloths, or sleep sacks draped over crib sides', rule: 'R 400.8134(14)', ageFilter: ['infant','toddler'] },
     { id: 'no_heavy_above', text: 'No heavy objects (shelving, TVs) above sleeping equipment', rule: 'R 400.8134(2)' },
     { id: 'no_unapproved_sleep', text: 'No car seats, infant seats, swings, bassinets, or play yards used for sleeping', rule: 'R 400.8134(6)', ageFilter: ['infant','toddler'] },
@@ -845,7 +845,10 @@ var CATEGORIES = [
     { id: 'bedding_stored', text: 'Bedding stored so sleeping surfaces and bedding do not contact each other', rule: 'R 400.8134(17)' },
     { id: 'cribs_2ft_apart', text: 'Cribs/portable cribs at least 2 feet apart when occupied', rule: 'R 400.8134(18)(a)', ageFilter: ['infant','toddler'] },
     { id: 'cots_18in_apart', text: 'Cots and mats at least 18 inches apart when occupied', rule: 'R 400.8134(18)(b)' },
-    { id: 'egress_sleep', text: 'Free and direct means of egress maintained in sleeping area', rule: 'R 400.8134(18)' }
+    { id: 'egress_sleep', text: 'Free and direct means of egress maintained in sleeping area', rule: 'R 400.8134(18)' },
+    { id: 'no_cots_blocking_exit', text: 'No cots or mats placed in front of an exit door — all exit pathways completely clear during nap time', rule: 'R 400.8525(6)' },
+    { id: 'bedding_individual_storage', text: 'Each child\'s bedding stored in individual bag or container — bedding not touching or making contact with other children\'s bedding', rule: 'R 400.8134(17)(b)' },
+    { id: 'nap_soft_lighting', text: 'Soft lighting adequate in nap/rest area to allow visual assessment of all children (not completely dark)', rule: 'R 400.8219(14)' }
   ]},
   { id: 'toileting', title: 'Toileting & Diapering', icon: '🚿', color: '#2980b9', items: [
     { id: 'sinks_accessible', text: 'Hand washing sinks accessible to children (platform or child-height)', rule: 'R 400.8143(4)' },
@@ -862,10 +865,19 @@ var CATEGORIES = [
     { id: 'poison_labeled', text: 'All poisonous/toxic material containers clearly labeled and stored out of reach of children', rule: 'R 400.8164(1)' },
     { id: 'sanitizers_out_reach', text: 'Chemical sanitizers and disinfectants stored out of reach of children', rule: 'R 400.8164(1)' },
     { id: 'meds_out_reach', text: 'All medication (prescription and nonprescription) stored out of reach of children', rule: 'R 400.8260(5)' },
-    { id: 'meds_original', text: 'Medication in original containers, properly labeled for named child', rule: 'R 400.8260(3)' },
+    { id: 'meds_original', text: 'All topical nonprescription medications (diaper cream, sunscreen, ointments) labeled with child\'s first and last name, in original container — not stored in backpacks', rule: 'R 400.8260(3)' },
     { id: 'no_expired_meds', text: 'No expired medication on site (including epi pens and emergency medications)', rule: 'R 400.8260(5)' },
+    { id: 'med_parent_permission', text: 'Written parent permission form on file for each medication stored in the classroom (prescription and nonprescription)', rule: 'R 400.8260(2)' },
+    { id: 'med_rx_label', text: 'Each prescription medication has pharmacy label with physician name, child\'s full name, instructions, and medication name/strength', rule: 'R 400.8260(4)' },
+    { id: 'med_infant_physician_note', text: 'Any infant medication with "consult physician for dosage under 2 years" has a written physician dosage order on file with the medication', rule: 'R 400.8260(6)', ageFilter: ['infant','toddler'] },
+    { id: 'med_no_backpack', text: 'No medication stored in a backpack, cubby, or child\'s personal belongings — all medication in designated locked classroom storage only', rule: 'R 400.8260(3)(5)' },
     { id: 'garbage_clean', text: 'Garbage containers clean — garbage removed from center daily', rule: 'R 400.8149(1)(2)' },
     { id: 'hazards_inaccessible', text: 'Hazardous items inaccessible to children (sharp objects, cleaning supplies, plastic bags)', rule: 'R 400.8161(1)' }
+  ]},
+  { id: 'food_labeling', title: 'Food & Beverage Labeling', icon: '🍱', color: '#16a085', items: [
+    { id: 'food_labeled_name_date', text: 'All parent-provided food, beverages, formula, and breast milk labeled with child\'s first and last name and today\'s date', rule: 'R 400.8340(3)' },
+    { id: 'food_unlabeled_labeled_by_staff', text: 'Any unlabeled food or drink items from home have been labeled by staff with child\'s name and date before being served or stored', rule: 'R 400.8340(3)' },
+    { id: 'food_not_expired', text: 'No expired food products in classroom or snack area storage — food items checked for expiration dates', rule: 'R 400.8320(1)' }
   ]},
   { id: 'fire', title: 'Fire Safety', icon: '🔥', color: '#e74c3c', items: [
     { id: 'exits_clear', text: 'Exits unobstructed and clearly identifiable', rule: 'R 400.8525' },
@@ -885,6 +897,8 @@ var ADMIN_CATEGORIES = [
   { id: 'admin_children_records', title: "Children's Records", icon: '📁', color: '#3498db', items: [
     { id: 'adm_info_cards', text: 'Child Information Cards (CCL-3731 or comparable) complete, signed, dated by parent, and current for all children', rule: 'R 400.8112(1)' },
     { id: 'adm_info_hard_copy', text: 'Hard copies of child information cards maintained at the center', rule: 'R 400.8112(1)' },
+    { id: 'adm_info_cards_fields', text: 'All child information cards have employer information, physician name/contact, allergies, and date of admission completed — no blank required fields', rule: 'R 400.8112(1)' },
+    { id: 'adm_info_cards_signed', text: 'All child information cards signed and dated by parent — no unsigned or undated cards on file', rule: 'R 400.8112(1)' },
     { id: 'adm_immunizations', text: 'Immunization records or waivers on file for all children under school age', rule: 'R 400.8112(2)' },
     { id: 'adm_physicals', text: 'Physical evaluations on file within 30 days of initial attendance for infants, toddlers, and preschoolers', rule: 'R 400.8112(5)' },
     { id: 'adm_physicals_current', text: 'Physical evaluations current — updated every year for infants/toddlers, every 2 years for preschoolers', rule: 'R 400.8112(6)' },
@@ -965,6 +979,7 @@ var ADMIN_CATEGORIES = [
     { id: 'adm_plans_posted', text: 'Fire/tornado/flood/power failure plans posted visibly to staff, volunteers, and parents', rule: 'R 400.8269(3)(a)' },
     { id: 'adm_plans_accessible', text: 'All other emergency plans maintained in a place known and accessible to staff', rule: 'R 400.8269(3)(b-c)' },
     { id: 'adm_fire_drills', text: 'Fire drill conducted at least 1 per quarter with dates/times logged', rule: 'R 400.8269(6)(9)' },
+    { id: 'adm_fire_drill_no_gap', text: 'Verify drill log shows no gap: a fire drill was conducted in each of the last 4 calendar quarters with no quarter skipped', rule: 'R 400.8269(6)' },
     { id: 'adm_tornado_drills', text: 'At least 2 tornado drills conducted between March and November with dates/times logged', rule: 'R 400.8269(7)(9)' },
     { id: 'adm_annual_drills', text: 'Annual drills conducted for other emergency plans with dates/times logged', rule: 'R 400.8269(8)(9)' },
     { id: 'adm_drill_log', text: 'Written drill log with date and time of each drill maintained on file', rule: 'R 400.8269(9)' },
@@ -1012,6 +1027,7 @@ var ADMIN_CATEGORIES = [
     { id: 'adm_incident_notification', text: 'Department notified within 24 hours for serious injuries, illnesses, or death; CPS for suspected abuse/neglect', rule: 'R 400.8266(1)' },
     { id: 'adm_med_by_program_staff', text: 'Medication given only by program staff with prior written parent permission', rule: 'R 400.8260(1-2)' },
     { id: 'adm_med_log', text: 'Medication administration log maintained with date, time, dosage, and staff signature', rule: 'R 400.8260(5)' },
+    { id: 'adm_med_monthly_audit', text: 'Monthly medication audit complete - program director has conducted current month review of all classroom medications for labeling, parent permissions, correct storage, and no expired items', rule: 'R 400.8260(2)(3)(4)(5)' },
     { id: 'adm_med_permission_forms', text: 'Medication permission forms on file for each medication, with dose, schedule, and parent signature', rule: 'R 400.8260(2)' },
     { id: 'adm_smoking_policy', text: 'Smoking or vaping prohibited on center premises during hours of operation', rule: 'R 400.8167(1)' },
     { id: 'adm_discipline_positive', text: 'Center using positive methods of discipline; no prohibited punishment methods observed', rule: 'R 400.8280(1-2)' },
