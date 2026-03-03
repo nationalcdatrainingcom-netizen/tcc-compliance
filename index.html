@@ -1128,7 +1128,7 @@ function renderSetup(){
   var rOpts='',center=getCenter();
   if(center)rOpts=center.classrooms.map(function(c){return '<option value="'+c.id+'"'+(state.classroomId===c.id?' selected':'')+'>'+c.name+' ('+getAgesLabel(c.ages)+')</option>';}).join('');
   var today=new Date().toISOString().split('T')[0];
-  var ok=state.centerId&&state.classroomId&&state.teacherName.trim()&&state.inspectionDate;
+  var ok=state.centerId&&state.classroomId&&state.teacherName.trim();
   var ipHtml='';
   var ipKeys=Object.keys(state.allData).filter(function(k){var d=state.allData[k];return d&&d.checks&&Object.keys(d.checks).length>0;});
   if(ipKeys.length>0){
@@ -1141,7 +1141,7 @@ function renderSetup(){
     }).filter(Boolean).join('');
     if(items)ipHtml='<div class="prev-checks"><h3>In-Progress Inspections</h3>'+items+'</div>';
   }
-  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">📋</div><h2>Classroom Self-Inspection</h2><p class="setup-desc">Select your center and classroom, enter your name, and choose the inspection date. The checklist will be customized for your classroom\'s age group.</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="selectCenter(this.value)"><option value="">Select a center...</option>'+cOpts+'</select></div><div class="form-group"><label>Classroom</label><select onchange="selectClassroom(this.value)"'+(center?'':' disabled')+'><option value="">Select a classroom...</option>'+rOpts+'</select></div><div class="form-row"><div class="form-group"><label>Lead Teacher Name</label><input type="text" placeholder="Your full name" value="'+(state.teacherName||'').replace(/"/g,'&quot;')+'" autocomplete="name" oninput="state.teacherName=this.value;saveState();updateStartBtn()"></div><div class="form-group"><label>Inspection Date</label><input type="date" value="'+(state.inspectionDate||today)+'" onchange="state.inspectionDate=this.value;saveState();updateStartBtn()"></div></div><button class="start-btn" id="startBtn" onclick="startChecker()"'+(ok?'':' disabled')+'>Begin Self-Inspection →</button></div>'+ipHtml+'</div></div>';
+  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">📋</div><h2>Classroom Self-Inspection</h2><p class="setup-desc">Select your center and classroom, enter your name, and choose the inspection date. The checklist will be customized for your classroom\'s age group.</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="selectCenter(this.value)"><option value="">Select a center...</option>'+cOpts+'</select></div><div class="form-group"><label>Classroom</label><select onchange="selectClassroom(this.value)"'+(center?'':' disabled')+'><option value="">Select a classroom...</option>'+rOpts+'</select></div><div class="form-group"><label>Lead Teacher Name</label><input type="text" placeholder="Your full name" value="'+(state.teacherName||'').replace(/"/g,'&quot;')+'" autocomplete="name" oninput="state.teacherName=this.value;saveState();updateStartBtn()"></div><button class="start-btn" id="startBtn" onclick="startChecker()"'+(ok?'':' disabled')+'>Begin Self-Inspection →</button></div>'+ipHtml+'</div></div>';
 }
 
 // ===== CHECKER =====
@@ -1169,10 +1169,10 @@ function renderChecker(){
   return '<div class="checker-layout">'+sb+'<div class="checker-main">'+hd+cats+'</div></div>';
 }
 
-function updateStartBtn(){var b=document.getElementById('startBtn');if(!b)return;b.disabled=!(state.centerId&&state.classroomId&&state.teacherName.trim()&&state.inspectionDate);}
+function updateStartBtn(){var b=document.getElementById('startBtn');if(!b)return;b.disabled=!(state.centerId&&state.classroomId&&state.teacherName.trim());}
 function selectCenter(v){state.centerId=v;state.classroomId='';saveState();render();}
 function selectClassroom(v){state.classroomId=v;var d=state.allData[getKey()];if(d&&d.teacherName)state.teacherName=d.teacherName;if(d&&d.inspectionDate)state.inspectionDate=d.inspectionDate;saveState();render();}
-function startChecker(){var d=getData();d.teacherName=state.teacherName;d.inspectionDate=state.inspectionDate;state.screen='checker';if(CATEGORIES.length>0)state.openCategories[CATEGORIES[0].id]=true;saveState();render();}
+function startChecker(){var d=getData();d.teacherName=state.teacherName;state.inspectionDate=new Date().toISOString().split("T")[0];d.inspectionDate=state.inspectionDate;state.screen='checker';if(CATEGORIES.length>0)state.openCategories[CATEGORIES[0].id]=true;saveState();render();}
 function backToSetup(){state.screen='setup';saveState();render();}
 function resumeCheck(cid,rid,teacher){state.centerId=cid;state.classroomId=rid;state.teacherName=teacher;var d=getData();if(d)state.inspectionDate=d.inspectionDate||'';state.screen='checker';if(CATEGORIES.length>0)state.openCategories[CATEGORIES[0].id]=true;saveState();render();}
 function toggleCategory(id){state.openCategories[id]=!state.openCategories[id];saveState();render();}
@@ -1254,13 +1254,13 @@ function setAdminCheck(itemId,value){var d=getAdminData();if(d.checks[itemId]===
 function setAdminNote(itemId,val){var d=getAdminData();if(!d.notes)d.notes={};d.notes[itemId]=val;saveState();}
 function renderAdmin(){if(!state.adminScreen)state.adminScreen='setup';return state.adminScreen==='setup'?renderAdminSetup():renderAdminChecker();}
 function backToAdminSetup(){state.adminScreen='setup';saveState();render();}
-function startAdminChecker(){var d=getAdminData();d.teacherName=state.teacherName;d.inspectionDate=state.inspectionDate;state.adminScreen='checker';if(ADMIN_CATEGORIES.length>0)state.openCategories[ADMIN_CATEGORIES[0].id]=true;saveState();render();}
+function startAdminChecker(){var d=getAdminData();d.teacherName=state.teacherName;state.inspectionDate=new Date().toISOString().split("T")[0];d.inspectionDate=state.inspectionDate;state.adminScreen='checker';if(ADMIN_CATEGORIES.length>0)state.openCategories[ADMIN_CATEGORIES[0].id]=true;saveState();render();}
 
 function renderAdminSetup(){
   var cOpts=CENTERS.map(function(c){return '<option value="'+c.id+'"'+(state.centerId===c.id?' selected':'')+'>'+c.name+'</option>';}).join('');
   var today=new Date().toISOString().split('T')[0];
   var ok=state.centerId&&state.teacherName&&state.teacherName.trim();
-  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">🏢</div><h2>Administrative Inspection</h2><p class="setup-desc">Center-wide administrative requirements: licensing, records, staffing, training, emergency preparedness, food service, and more.</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="state.centerId=this.value;saveState()"><option value="">Select a center...</option>'+cOpts+'</select></div><div class="form-row"><div class="form-group"><label>Inspector Name</label><input type="text" placeholder="Your full name" value="'+(state.teacherName||'').replace(/"/g,'&quot;')+'" autocomplete="name" oninput="state.teacherName=this.value;saveState()"></div><div class="form-group"><label>Inspection Date</label><input type="date" value="'+(state.inspectionDate||today)+'" onchange="state.inspectionDate=this.value;saveState()"></div></div><button class="start-btn"'+(ok?'':' disabled')+' onclick="startAdminChecker()">Begin Administrative Inspection →</button></div></div></div>';
+  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">🏢</div><h2>Administrative Inspection</h2><p class="setup-desc">Center-wide administrative requirements: licensing, records, staffing, training, emergency preparedness, food service, and more.</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="state.centerId=this.value;saveState()"><option value="">Select a center...</option>'+cOpts+'</select></div><div class="form-group"><label>Inspector Name</label><input type="text" placeholder="Your full name" value="'+(state.teacherName||'').replace(/"/g,'&quot;')+'" autocomplete="name" oninput="state.teacherName=this.value;saveState()"></div><button class="start-btn"'+(ok?'':' disabled')+' onclick="startAdminChecker()">Begin Administrative Inspection →</button></div></div></div>';
 }
 
 function renderAdminChecker(){
