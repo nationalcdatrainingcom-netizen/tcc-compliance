@@ -1054,7 +1054,60 @@ function cloudPost(submission, tab){
 }
 function cloudLoad(callback){
   if(!SCRIPT_URL){_cloudLoading=false;if(callback)callback([]);return;}
-  _cloudLoading=true;_cloudError='';render();
+  _cloudLoading=true;_cloudError='';// ══════════════════════════════════════════════════════════════
+// HUB SSO AUTO-LOGIN FOR COMPLIANCE
+// ══════════════════════════════════════════════════════════════
+//
+// PASTE INSTRUCTIONS:
+// 1. Open tcc-compliance/index.html in GitHub's web editor
+// 2. Press Ctrl+G (or Cmd+G on Mac) to "Go to line"
+// 3. Scroll to the very bottom of the file
+// 4. Find the LAST line that says:  render();
+//    (it's the very last line of JavaScript before </script>)
+// 5. Click at the BEGINNING of that render(); line
+// 6. Press Enter to make a blank line above it
+// 7. Paste ALL of the code below (everything between the === lines)
+// 8. Commit the change
+//
+// ══════════════════════════════════════════════════════════════
+
+// ── HUB SSO AUTO-LOGIN ──
+(function hubSSOCheck() {
+  var params = new URLSearchParams(window.location.search);
+  var hubUser = params.get('hub_user');
+  var hubCenter = params.get('hub_center');
+  var hubRole = params.get('hub_role');
+  if (!hubUser) return;
+  var centerMap = {peace:'peace', niles:'niles', montessori:'montessori_center', all:''};
+  var mappedCenter = centerMap[hubCenter] || '';
+  var hubUserLower = hubUser.toLowerCase();
+  var matchedUser = USERS.find(function(u) {
+    return u.name.toLowerCase() === hubUserLower || u.id.toLowerCase() === hubUserLower;
+  });
+  if (!matchedUser && (hubRole === 'owner' || hubRole === 'admin')) {
+    matchedUser = USERS.find(function(u) { return u.role === 'owner'; });
+  }
+  if (!matchedUser && mappedCenter) {
+    matchedUser = USERS.find(function(u) {
+      return u.centers.indexOf(mappedCenter) !== -1 && (u.role === 'director' || u.role === 'assistant');
+    });
+  }
+  if (matchedUser) {
+    dashUser = matchedUser;
+    dashFilterCenter = mappedCenter || '';
+    dashViewMonth = getDashCurrentMonth();
+    dashViewQuarter = getDashCurrentQuarter();
+    dashExpandedRows = {};
+    appMode = 'dashboard';
+    try { localStorage.setItem('mi_cc_dash_user', matchedUser.id); } catch(e) {}
+    _cloudSynced = false; _lastSyncTime = '';
+    cloudLoad(function() {
+      _lastSyncTime = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+      render();
+    });
+    console.log('Hub SSO: auto-logged in as', matchedUser.name, 'for center', hubCenter);
+  }
+})();render();
   fetch(SCRIPT_URL+'?tab=compliance').then(function(r){return r.json();}).then(function(rows){
     _cloudLoading=false;
     var raw=Array.isArray(rows)?rows:[];
