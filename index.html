@@ -1478,23 +1478,31 @@ function resetUsersToDefault(){if(!confirm('Reset all directors to defaults? Cha
 // ===== INIT =====
 if(!state.inspectionDate)state.inspectionDate=new Date().toISOString().split('T')[0];
 if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
-  // Hub hint: show login info when opened from Hub
+ // Hub SSO: auto-login to dashboard when opened from Hub
 (function(){
   var p = new URLSearchParams(window.location.search);
   var u = p.get('hub_user');
-  if (u) {
-    var ul = u.toLowerCase();
-    var m = USERS.find(function(x){ return x.name.toLowerCase() === ul || x.id === ul; });
-    if (m) {
-      var old = dashDoLogin;
-      window.addEventListener('load', function(){
-        var sel = document.getElementById('dashLoginUser');
-        var pin = document.getElementById('dashLoginPin');
-        if (sel) sel.value = m.id;
-        if (pin) { pin.value = m.pin; pin.type = 'text'; }
-        setTimeout(function(){ dashDoLogin(); }, 500);
-      });
+  if (!u) return;
+  var ul = u.toLowerCase();
+  var m = USERS.find(function(x){ return x.name.toLowerCase() === ul || x.id === ul; });
+  if (!m) {
+    var r = p.get('hub_role');
+    if (r === 'owner' || r === 'admin') m = USERS.find(function(x){ return x.role === 'owner'; });
+  }
+  if (m) {
+    dashUser = m;
+    dashFilterCenter = '';
+    var hc = p.get('hub_center');
+    if (hc) {
+      var cm = {peace:'peace', niles:'niles', montessori:'montessori_center'};
+      dashFilterCenter = cm[hc] || '';
     }
+    dashViewMonth = getDashCurrentMonth();
+    dashViewQuarter = getDashCurrentQuarter();
+    appMode = 'dashboard';
+    try { localStorage.setItem('mi_cc_dash_user', m.id); } catch(e) {}
+    _cloudSynced = false;
+    cloudLoad(function(){ render(); });
   }
 })();
 render();
