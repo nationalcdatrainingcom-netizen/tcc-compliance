@@ -1478,6 +1478,25 @@ function resetUsersToDefault(){if(!confirm('Reset all directors to defaults? Cha
 // ===== INIT =====
 if(!state.inspectionDate)state.inspectionDate=new Date().toISOString().split('T')[0];
 if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
+  // Hub hint: show login info when opened from Hub
+(function(){
+  var p = new URLSearchParams(window.location.search);
+  var u = p.get('hub_user');
+  if (u) {
+    var ul = u.toLowerCase();
+    var m = USERS.find(function(x){ return x.name.toLowerCase() === ul || x.id === ul; });
+    if (m) {
+      var old = dashDoLogin;
+      window.addEventListener('load', function(){
+        var sel = document.getElementById('dashLoginUser');
+        var pin = document.getElementById('dashLoginPin');
+        if (sel) sel.value = m.id;
+        if (pin) { pin.value = m.pin; pin.type = 'text'; }
+        setTimeout(function(){ dashDoLogin(); }, 500);
+      });
+    }
+  }
+})();
 render();
 </script>
 </body>
