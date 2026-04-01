@@ -1040,6 +1040,7 @@ function getAdminDataForRole(role){var k=getAdminDataKeyNew(role,adminState.cent
 function getAdminRoleCounts(d,role,cid){var cats=getAdminCatsForRole(role);var p=0,f=0,n=0,t=0;cats.forEach(function(cat){getAdminFilteredItems(cat,cid).forEach(function(i){t++;var v=d.checks[i.id];if(v==='pass')p++;else if(v==='fail')f++;else if(v==='na')n++;});});return{pass:p,fail:f,na:n,unchecked:t-p-f-n,total:t};}
 function getAdminRoleProgress(d,role,cid){var co=getAdminRoleCounts(d,role,cid);return co.total===0?0:Math.round(((co.pass+co.fail+co.na)/co.total)*100);}
 function getCenterById(cid){return CENTERS.find(function(c){return c.id===(cid||state.centerId);});}
+function getAdminFilteredItems(cat,cid){return cat.items.filter(function(item){if(!item.centers)return true;return item.centers.indexOf(cid||state.centerId)>=0;});}
 
 // ===== STATE =====
 var state = { screen:'setup', centerId:'', classroomId:'', teacherName:'', inspectionDate:'', openCategories:{}, allData:{}, submissions:[], adminData:{} };
@@ -1531,7 +1532,7 @@ function renderDashAdminTab(){
       var pc = (sub.completion || 0) >= 100 ? 'pct-complete' : ((sub.completion || 0) > 0 ? 'pct-partial' : 'pct-empty');
       var hd = failItems.length > 0;
       var isE = dashExpandedRows['a-' + idx];
-      var roleLabel = sub.adminRoleLabel || ADMIN_ROLE_LABELS[sub.adminRole] || 'Admin';
+      var roleLabel = sub.adminRoleLabel || (ADMIN_MODES[sub.adminRole] ? ADMIN_MODES[sub.adminRole].label : 'Admin');
       var row = '<tr><td class="td-center">' + (sub.centerName || '') + '</td><td class="td-teacher">' + (sub.teacherName || '') + '</td><td style="font-size:0.72rem;">' + roleLabel + '</td><td>' + formatDate(sub.inspectionDate) + '</td><td><span class="pct-badge ' + pc + '">' + (sub.completion || 0) + '%</span></td><td class="d-pass-fail"><span class="pf-pass">' + (sub.pass || 0) + 'P</span>/<span class="pf-fail">' + (sub.fail || 0) + 'F</span></td><td>' + (hd ? '<button class="d-expand-btn" onclick="dashToggleRow(\'a-' + idx + '\')">' + (isE ? '▲ Hide' : '▼ Details') + '</button>' : '<span style="font-size:0.72rem;color:var(--brand);">✓ Clean</span>') + '</td></tr>';
       if (isE && hd) {
         var fh = failItems.map(function(fi) { return '<div class="dc-fail-item"><div class="dc-fail-text">' + fi.text + '</div>' + (fi.note ? '<div class="dc-note">📝 ' + fi.note + '</div>' : '') + '</div>'; }).join('');
