@@ -1026,45 +1026,23 @@ var ADMIN_CATEGORIES = [
   ]}
 ];
 
-// ===== ADMIN ROLE ASSIGNMENTS =====
-// Maps adminRole values to the category IDs they can access
-var ADMIN_ROLE_CATEGORIES = {
-  records: ['admin_children_records'],
-  hr: ['admin_center_records', 'admin_staff_quals', 'admin_orientation', 'admin_background'],
-  director: ['admin_licensing', 'admin_parent_info', 'admin_emergency', 'admin_ratios', 'admin_outdoor', 'admin_fire_safety', 'admin_food', 'admin_misc']
+// ===== ADMIN ROLE CONFIG =====
+var ADMIN_MODES = {
+  director: { label: 'Director Inspection', icon: '👥', desc: 'Licensing, parent info, emergency prep, ratios, outdoor, fire safety, food service, and incidents/medication.' },
+  hr: { label: 'HR Inspection', icon: '🎓', desc: 'Center & staff records, staff qualifications & training, orientation, and background checks.' },
+  records: { label: 'Records Inspection', icon: '📁', desc: "Children\'s records including information cards, immunizations, physicals, attendance, and permissions." }
 };
-
-// Human-readable labels for admin roles
-var ADMIN_ROLE_LABELS = {
-  records: "Children's Records",
-  hr: 'Staff Records & Qualifications',
-  director: 'Program Director'
-};
-
-// Which adminRole each user has (keyed by user id)
-function getAdminRoleForUser(userId) {
-  if (userId === 'kelsey') return 'records';
-  if (userId === 'amy') return 'hr';
-  // Directors and owners get 'director' role in admin context; owners also see everything on dashboard
-  var user = USERS.find(function(u) { return u.id === userId; });
-  if (user && (user.role === 'director' || user.role === 'assistant' || user.role === 'owner')) return 'director';
-  return null;
-}
-
-// Get which admin categories a user can see
-function getAdminCategoriesForUser(userId) {
-  var user = USERS.find(function(u) { return u.id === userId; });
-  if (!user) return [];
-  // Owners see ALL admin categories
-  if (user.role === 'owner') return ADMIN_CATEGORIES;
-  var role = getAdminRoleForUser(userId);
-  if (!role) return [];
-  var allowedIds = ADMIN_ROLE_CATEGORIES[role] || [];
-  return ADMIN_CATEGORIES.filter(function(cat) { return allowedIds.indexOf(cat.id) !== -1; });
-}
+function getAdminCatsForRole(role){return ADMIN_CATEGORIES.filter(function(c){return c.adminRole===role;});}
+var currentAdminRole='';
+var adminState={screen:'setup',centerId:'',inspectorName:''};
+function getAdminDataKeyNew(role,cid,name){return cid+'::ADMIN_'+role+'::'+(name||'').trim().toLowerCase();}
+function getAdminDataForRole(role){var k=getAdminDataKeyNew(role,adminState.centerId,adminState.inspectorName);if(!state.adminData[k])state.adminData[k]={checks:{},notes:{},checkDates:{}};return state.adminData[k];}
+function getAdminRoleCounts(d,role,cid){var cats=getAdminCatsForRole(role);var p=0,f=0,n=0,t=0;cats.forEach(function(cat){getAdminFilteredItems(cat,cid).forEach(function(i){t++;var v=d.checks[i.id];if(v==='pass')p++;else if(v==='fail')f++;else if(v==='na')n++;});});return{pass:p,fail:f,na:n,unchecked:t-p-f-n,total:t};}
+function getAdminRoleProgress(d,role,cid){var co=getAdminRoleCounts(d,role,cid);return co.total===0?0:Math.round(((co.pass+co.fail+co.na)/co.total)*100);}
+function getCenterById(cid){return CENTERS.find(function(c){return c.id===(cid||state.centerId);});}
 
 // ===== STATE =====
-var state = { screen:'setup', centerId:'', classroomId:'', teacherName:'', inspectionDate:'', openCategories:{}, allData:{}, submissions:[], adminData:{}, adminScreen:'setup' };
+var state = { screen:'setup', centerId:'', classroomId:'', teacherName:'', inspectionDate:'', openCategories:{}, allData:{}, submissions:[], adminData:{} };
 try { var s=localStorage.getItem('mi_cc_v4'); if(s){var p=JSON.parse(s); Object.keys(p).forEach(function(k){state[k]=p[k];});} } catch(e){}
 state.screen='setup'; state.adminScreen='setup';
 function saveState(){try{localStorage.setItem('mi_cc_v4',JSON.stringify(state));}catch(e){}}
@@ -1129,16 +1107,17 @@ function render(){
   var scrollY=window.scrollY||0;
   var doRestore=!_skipScrollRestore;_skipScrollRestore=false;
   var app=document.getElementById('app'),ha=document.getElementById('headerActions');
-  var modeToggle='<div class="mode-toggle"><button class="mode-toggle-btn'+(appMode==='checker'?' active':'')+'" onclick="switchMode(\'checker\')">📋 Classroom</button><button class="mode-toggle-btn'+(appMode==='admin'?' active':'')+'" onclick="switchMode(\'admin\')">🏢 Admin</button><button class="mode-toggle-btn'+(appMode==='dashboard'?' active':'')+'" onclick="switchMode(\'dashboard\')">📊 Dashboard</button></div>';
+  var modeToggle='<div class="mode-toggle"><button class="mode-toggle-btn'+(appMode==='checker'?' active':'')+'" onclick="switchMode(\'checker\')">📋 Classroom</button><button class="mode-toggle-btn'+(appMode==='director'?' active':'')+'" onclick="switchMode(\'director\')">👥 Director</button><button class="mode-toggle-btn'+(appMode==='hr'?' active':'')+'" onclick="switchMode(\'hr\')">🎓 HR</button><button class="mode-toggle-btn'+(appMode==='records'?' active':'')+'" onclick="switchMode(\'records\')">📁 Records</button><button class="mode-toggle-btn'+(appMode==='dashboard'?' active':'')+'" onclick="switchMode(\'dashboard\')">📊 Dashboard</button></div>';
   if(appMode==='dashboard'){
     if(dashUser){ha.innerHTML=modeToggle+'<span class="user-badge">'+dashUser.name+'<span class="ub-role"> · '+getDashRoleLabel(dashUser.role)+'</span></span>'+(dashUser.role==='owner'?'<button class="header-btn" onclick="openSettings()">⚙️</button>':'')+'<button class="header-btn" onclick="window.print()">🖨️</button><button class="header-btn" onclick="dashLogout()">↩️</button>';}
     else{ha.innerHTML=modeToggle;}
     app.innerHTML=renderDashboard();if(doRestore)window.scrollTo(0,scrollY);return;
   }
-  if(appMode==='admin'){
-    if(adminUser&&state.adminScreen==='checker'){ha.innerHTML=modeToggle+'<span class="user-badge">'+adminUser.name+'<span class="ub-role"> · '+ADMIN_ROLE_LABELS[getAdminRoleForUser(adminUser.id)]+'</span></span><button class="header-btn" onclick="window.print()">🖨️</button><button class="header-btn" onclick="submitAdminToDashboard()">✅ Submit</button><button class="header-btn" onclick="backToAdminSetup()">← Back</button>';}
+  if(appMode==='director'||appMode==='hr'||appMode==='records'){
+    currentAdminRole=appMode;
+    if(adminState.screen==='checker'){var mInfo=ADMIN_MODES[currentAdminRole];ha.innerHTML=modeToggle+'<span class="user-badge">'+adminState.inspectorName+'<span class="ub-role"> · '+mInfo.label+'</span></span><button class="header-btn" onclick="window.print()">🖨️</button><button class="header-btn" onclick="submitAdminSection()">✅ Submit</button><button class="header-btn" onclick="adminState.screen=\'setup\';render()">← Back</button>';}
     else{ha.innerHTML=modeToggle;}
-    app.innerHTML=renderAdmin();if(doRestore)window.scrollTo(0,scrollY);return;
+    app.innerHTML=renderAdminMode();if(doRestore)window.scrollTo(0,scrollY);return;
   }
   if(state.screen==='setup'){app.innerHTML=renderSetup();ha.innerHTML=modeToggle;}
   else{app.innerHTML=renderChecker();ha.innerHTML=modeToggle+'<button class="header-btn" onclick="window.print()">🖨️</button><button class="header-btn" onclick="submitToDashboard()">✅ Submit</button><button class="header-btn" onclick="backToSetup()">← Back</button>';}
@@ -1265,149 +1244,54 @@ function doSubmit(){
 function showModal(html){document.getElementById('modal').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal-card">'+html+'</div></div>';}
 function closeModal(){document.getElementById('modal').innerHTML='';}
 
-// ===== ADMIN (Role-Based) =====
-var adminUser = null; // Currently logged-in admin user
-
-function getAdminKey(){return state.centerId+'::ADMIN::'+adminUser.id;}
-function getAdminData(){var k=getAdminKey();if(!state.adminData[k])state.adminData[k]={checks:{},notes:{},checkDates:{}};return state.adminData[k];}
-function getAdminFilteredItems(cat){return cat.items.filter(function(item){if(!item.centers)return true;return item.centers.indexOf(state.centerId)>=0;});}
-
-function getAdminCountsForUser(d, userId){
-  var cats = getAdminCategoriesForUser(userId);
-  var p=0,f=0,n=0,t=0;
-  cats.forEach(function(cat){getAdminFilteredItems(cat).forEach(function(i){t++;var v=d.checks[i.id];if(v==='pass')p++;else if(v==='fail')f++;else if(v==='na')n++;});});
-  return{pass:p,fail:f,na:n,unchecked:t-p-f-n,total:t};
+// ===== ADMIN MODE (director/hr/records — no login) =====
+function renderAdminMode(){
+  var role=currentAdminRole;var mode=ADMIN_MODES[role];
+  if(adminState.screen==='checker')return renderAdminCheckerView(role);
+  var cOpts=CENTERS.map(function(c){return '<option value="'+c.id+'"'+(adminState.centerId===c.id?' selected':'')+'>'+c.name+'</option>';}).join('');
+  var cats=getAdminCatsForRole(role);
+  var sectionList=cats.map(function(cat){var items=getAdminFilteredItems(cat,adminState.centerId||'peace');return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;"><span style="font-size:1rem;">'+cat.icon+'</span><span style="font-size:0.82rem;font-weight:600;color:var(--text);">'+cat.title+'</span><span style="font-size:0.68rem;color:var(--text-light);margin-left:auto;">'+items.length+' items</span></div>';}).join('');
+  var ok=adminState.centerId&&adminState.inspectorName&&adminState.inspectorName.trim();
+  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">'+mode.icon+'</div><h2>'+mode.label+'</h2><p class="setup-desc">'+mode.desc+'</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="adminState.centerId=this.value;render()"><option value="">Select a center...</option>'+cOpts+'</select></div><div class="form-group"><label>Your Name</label><input type="text" placeholder="Your full name" value="'+(adminState.inspectorName||'').replace(/"/g,'&quot;')+'" autocomplete="name" oninput="adminState.inspectorName=this.value"></div><div style="background:var(--bg);border-radius:8px;padding:0.8rem;margin-bottom:1rem;border:1px solid var(--border-light);"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);margin-bottom:0.4rem;">Your Sections</div>'+sectionList+'</div><button class="start-btn"'+(ok?'':' disabled')+' onclick="startAdminInspection()">Begin Inspection \u2192</button></div></div></div>';
 }
-function getAdminProgressForUser(d, userId){var c=getAdminCountsForUser(d, userId);return c.total===0?0:Math.round(((c.pass+c.fail+c.na)/c.total)*100);}
-
-function setAdminCheck(itemId,value){var d=getAdminData();if(!d.checkDates)d.checkDates={};if(d.checks[itemId]===value){delete d.checks[itemId];delete d.checkDates[itemId];saveState();render();return;}d.checks[itemId]=value;d.checkDates[itemId]=new Date().toLocaleString();saveState();render();}
-function setAdminNote(itemId,val){var d=getAdminData();if(!d.notes)d.notes={};d.notes[itemId]=val;saveState();}
-
-function renderAdmin(){
-  if(!adminUser) return renderAdminLogin();
-  if(!state.adminScreen) state.adminScreen='setup';
-  return state.adminScreen==='setup'?renderAdminSetup():renderAdminChecker();
+function startAdminInspection(){
+  if(!adminState.centerId||!adminState.inspectorName||!adminState.inspectorName.trim())return;
+  var d=getAdminDataForRole(currentAdminRole);d.teacherName=adminState.inspectorName;d.inspectionDate=new Date().toISOString().split("T")[0];
+  adminState.screen='checker';var cats=getAdminCatsForRole(currentAdminRole);if(cats.length>0)state.openCategories[cats[0].id]=true;saveState();render();
 }
-
-function adminDoLogin(){
-  var uid=document.getElementById('adminLoginUser').value;
-  var pin=document.getElementById('adminLoginPin').value;
-  var err=document.getElementById('adminLoginError');
-  if(!uid){err.textContent='Please select your name.';err.style.display='block';return;}
-  var user=USERS.find(function(u){return u.id===uid;});
-  if(!user){err.textContent='User not found.';err.style.display='block';return;}
-  if(pin!==user.pin){err.textContent='Incorrect PIN.';err.style.display='block';document.getElementById('adminLoginPin').value='';document.getElementById('adminLoginPin').focus();return;}
-  var role = getAdminRoleForUser(user.id);
-  if(!role){err.textContent='You do not have admin inspection access.';err.style.display='block';return;}
-  adminUser=user;
-  try{localStorage.setItem('mi_cc_admin_user',user.id);}catch(e){}
-  state.adminScreen='setup';
-  render();
-}
-
-function adminLogout(){adminUser=null;state.adminScreen='setup';try{localStorage.removeItem('mi_cc_admin_user');}catch(e){}render();}
-
-function renderAdminLogin(){
-  // Show all users who have an admin role
-  var eligible = USERS.filter(function(u) { return getAdminRoleForUser(u.id) !== null; });
-  var opts=eligible.map(function(u){var rl=ADMIN_ROLE_LABELS[getAdminRoleForUser(u.id)]||u.role;return '<option value="'+u.id+'">'+u.name+' — '+rl+'</option>';}).join('');
-  return '<div class="login-screen"><div class="login-card"><div class="login-icon">🏢</div><h2>Administrative Inspection</h2><p class="login-desc">Log in to complete your portion of the administrative inspection.</p><div class="form-group"><label>Your Name</label><select id="adminLoginUser"><option value="">Select your name...</option>'+opts+'</select></div><div class="form-group"><label>4-Digit PIN</label><input type="password" id="adminLoginPin" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" onkeydown="if(event.key===\'Enter\')adminDoLogin()"></div><button class="login-btn" onclick="adminDoLogin()">Log In</button><div class="login-error" id="adminLoginError"></div></div></div>';
-}
-
-function backToAdminSetup(){state.adminScreen='setup';saveState();render();}
-
-function startAdminChecker(){
-  if(!state.centerId){alert('Please select a center.');return;}
-  var d=getAdminData();
-  d.teacherName=adminUser.name;
-  state.inspectionDate=new Date().toISOString().split("T")[0];
-  d.inspectionDate=state.inspectionDate;
-  state.adminScreen='checker';
-  var myCats = getAdminCategoriesForUser(adminUser.id);
-  if(myCats.length>0)state.openCategories[myCats[0].id]=true;
-  saveState();render();
-}
-
-function renderAdminSetup(){
-  // Filter centers to those the user has access to
-  var userCenters = adminUser.centers || ['peace','montessori_center','niles'];
-  var cOpts=CENTERS.filter(function(c){return userCenters.indexOf(c.id)!==-1;}).map(function(c){return '<option value="'+c.id+'"'+(state.centerId===c.id?' selected':'')+'>'+c.name+'</option>';}).join('');
-  var ok=state.centerId;
-  var myCats = getAdminCategoriesForUser(adminUser.id);
-  var roleName = ADMIN_ROLE_LABELS[getAdminRoleForUser(adminUser.id)] || 'Inspector';
-
-  var sectionList = myCats.map(function(cat) {
-    return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;"><span style="font-size:1rem;">'+cat.icon+'</span><span style="font-size:0.82rem;font-weight:600;color:var(--text);">'+cat.title+'</span><span style="font-size:0.68rem;color:var(--text-light);margin-left:auto;">'+getAdminFilteredItems(cat).length+' items</span></div>';
-  }).join('');
-
-  return '<div class="setup-screen"><div class="setup-card"><div class="setup-card-header"><div class="setup-icon">🏢</div><h2>Administrative Inspection</h2><p class="setup-desc">Welcome, <strong>'+adminUser.name+'</strong>! Your role: <strong>'+roleName+'</strong>. Select a center to begin inspecting your assigned sections.</p></div><div class="setup-card-body"><div class="form-group"><label>Center</label><select onchange="state.centerId=this.value;saveState();render()"><option value="">Select a center...</option>'+cOpts+'</select></div><div style="background:var(--bg);border-radius:8px;padding:0.8rem;margin-bottom:1rem;border:1px solid var(--border-light);"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);margin-bottom:0.4rem;">Your Assigned Sections</div>'+sectionList+'</div><button class="start-btn"'+(ok?'':' disabled')+' onclick="startAdminChecker()">Begin My Sections →</button></div></div><div style="text-align:center;margin-top:0.5rem;"><button onclick="adminLogout()" style="background:none;border:none;color:var(--text-light);font-size:0.78rem;cursor:pointer;font-family:\'Nunito Sans\',sans-serif;font-weight:700;">↩️ Switch User</button></div></div>';
-}
-
-function renderAdminChecker(){
-  var d=getAdminData();var center=getCenter();
-  if(!center){state.adminScreen='setup';return renderAdminSetup();}
-  var myCats = getAdminCategoriesForUser(adminUser.id);
-  var counts=getAdminCountsForUser(d, adminUser.id);var pct=getAdminProgressForUser(d, adminUser.id);
-  var roleName = ADMIN_ROLE_LABELS[getAdminRoleForUser(adminUser.id)] || 'Inspector';
-
-  var sidebar='<div class="sidebar"><div class="sidebar-card"><div class="sidebar-title">Admin Inspection</div><div class="sidebar-info"><div class="si-label">Center</div><div class="si-value">'+center.name+'</div></div><div class="sidebar-info"><div class="si-label">Inspector</div><div class="si-value">'+adminUser.name+'</div></div><div class="sidebar-info"><div class="si-label">Role</div><div class="si-value">'+roleName+'</div></div>';
-  sidebar+=myCats.map(function(cat){var items=getAdminFilteredItems(cat);var ck=0;items.forEach(function(i){if(d.checks[i.id])ck++;});var np=items.length>0?Math.round((ck/items.length)*100):100;var pc=np>=100?'complete':(np>0?'partial':'empty');return '<div class="cat-nav-item'+(np>=100?' cat-nav-done':'')+'" onclick="state.openCategories[\''+cat.id+'\']=true;saveState();render();setTimeout(function(){var el=document.getElementById(\'cat-'+cat.id+'\');if(el)el.scrollIntoView({behavior:\'smooth\'});},50);">'+cat.icon+' '+cat.title+'<span class="nav-progress '+pc+'">'+(np>=100?'✓':np+'%')+'</span></div>';}).join('');
-  sidebar+='<div class="overall-progress"><div class="overall-label">Your Progress</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div><div class="overall-pct">'+pct+'% · '+counts.pass+'P/'+counts.fail+'F/'+counts.na+'NA</div></div><div class="sidebar-actions"><button class="sidebar-btn primary" onclick="submitAdminToDashboard()">✅ Sign Off & Submit</button><button class="sidebar-btn" onclick="backToAdminSetup()">← Back</button></div></div></div>';
-
-  var header='<div class="classroom-header"><div><h2>🏢 '+center.name+' — '+roleName+'</h2><div class="last-inspection">Inspector: <strong>'+adminUser.name+'</strong> · Date: <strong>'+formatDate(state.inspectionDate)+'</strong></div></div><div class="classroom-stats"><div class="stat-item"><div class="stat-num green">'+counts.pass+'</div><div class="stat-label">Pass</div></div><div class="stat-item"><div class="stat-num red">'+counts.fail+'</div><div class="stat-label">Fail</div></div><div class="stat-item"><div class="stat-num orange">'+counts.unchecked+'</div><div class="stat-label">Left</div></div></div></div>';
-
-  var sections=myCats.map(function(cat){
-    var items=getAdminFilteredItems(cat);var ck=0,fl=0;
-    items.forEach(function(i){if(d.checks[i.id])ck++;if(d.checks[i.id]==='fail')fl++;});
-    var isOpen=state.openCategories[cat.id];var secComplete=ck===items.length;
-    var cntClass=ck===items.length?(fl>0?'some-issues':'all-good'):(ck>0?'some-issues':'not-started');
+function renderAdminCheckerView(role){
+  var d=getAdminDataForRole(role);var center=getCenterById(adminState.centerId);
+  if(!center){adminState.screen='setup';return renderAdminMode();}
+  var mode=ADMIN_MODES[role];var cats=getAdminCatsForRole(role);
+  var counts=getAdminRoleCounts(d,role,adminState.centerId);var pct=getAdminRoleProgress(d,role,adminState.centerId);
+  var sb='<div class="sidebar"><div class="sidebar-card"><div class="sidebar-title">'+mode.label+'</div><div class="sidebar-info"><div class="si-label">Center</div><div class="si-value">'+center.name+'</div></div><div class="sidebar-info"><div class="si-label">Inspector</div><div class="si-value">'+adminState.inspectorName+'</div></div>';
+  sb+=cats.map(function(cat){var items=getAdminFilteredItems(cat,adminState.centerId);var ck=0;items.forEach(function(i){if(d.checks[i.id])ck++;});var np=items.length>0?Math.round((ck/items.length)*100):100;var pc=np>=100?'complete':(np>0?'partial':'empty');return '<div class="cat-nav-item'+(np>=100?' cat-nav-done':'')+'" onclick="state.openCategories[\''+cat.id+'\']=true;saveState();render();setTimeout(function(){var el=document.getElementById(\'cat-'+cat.id+'\');if(el)el.scrollIntoView({behavior:\'smooth\'});},50);">'+cat.icon+' '+cat.title+'<span class="nav-progress '+pc+'">'+(np>=100?'\u2713':np+'%')+'</span></div>';}).join('');
+  sb+='<div class="overall-progress"><div class="overall-label">Your Progress</div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div><div class="overall-pct">'+pct+'% \u00b7 '+counts.pass+'P/'+counts.fail+'F/'+counts.na+'NA</div></div><div class="sidebar-actions"><button class="sidebar-btn primary" onclick="submitAdminSection()">\u2705 Sign Off & Submit</button><button class="sidebar-btn" onclick="adminState.screen=\'setup\';render()">\u2190 Back</button></div></div></div>';
+  var hd='<div class="classroom-header"><div><h2>'+mode.icon+' '+center.name+' \u2014 '+mode.label+'</h2><div class="last-inspection">Inspector: <strong>'+adminState.inspectorName+'</strong> \u00b7 Date: <strong>'+formatDate(d.inspectionDate)+'</strong></div></div><div class="classroom-stats"><div class="stat-item"><div class="stat-num green">'+counts.pass+'</div><div class="stat-label">Pass</div></div><div class="stat-item"><div class="stat-num red">'+counts.fail+'</div><div class="stat-label">Fail</div></div><div class="stat-item"><div class="stat-num orange">'+counts.unchecked+'</div><div class="stat-label">Left</div></div></div></div>';
+  var secs=cats.map(function(cat){
+    var items=getAdminFilteredItems(cat,adminState.centerId);var ck=0,fl=0;items.forEach(function(i){if(d.checks[i.id])ck++;if(d.checks[i.id]==='fail')fl++;});
+    var isOpen=state.openCategories[cat.id];var secDone=ck===items.length;var cls=ck===items.length?(fl>0?'some-issues':'all-good'):(ck>0?'some-issues':'not-started');
     var body=items.map(function(item){
-      var v=d.checks[item.id]||'';var hasFail=v==='fail';var note=(d.notes&&d.notes[item.id])||'';var showNote=hasFail||note;
+      var v=d.checks[item.id]||'';var isFail=v==='fail';var note=(d.notes&&d.notes[item.id])||'';var showNote=isFail||note;
       var ps='';if(v==='pass')ps='<span class="print-status ps-pass">PASS</span>';else if(v==='fail')ps='<span class="print-status ps-fail">FAIL</span>';else if(v==='na')ps='<span class="print-status ps-na">N/A</span>';
-      return '<div class="check-item'+(hasFail?' fail-needs-note':'')+'"><div class="check-content"><div class="check-text">'+item.text+ps+'</div><div class="check-rule">'+item.rule+'</div>'+(showNote?'<div class="check-note"><textarea placeholder="'+(hasFail?'Corrective action...':'Add note...')+'" oninput="setAdminNote(\''+item.id+'\',this.value)">'+note+'</textarea>'+(hasFail&&!note.trim()?'<div class="note-required-label">⚠ Corrective action note required</div>':'')+'</div>':'<div class="note-toggle" onclick="var d=getAdminData();if(!d.notes)d.notes={};d.notes[\''+item.id+'\']=\' \';saveState();render();">📝 Add note</div>')+'</div><div class="check-actions"><button class="status-btn'+(v==='pass'?' active-pass':'')+'" onclick="setAdminCheck(\''+item.id+'\',\'pass\')">✓</button><button class="status-btn'+(v==='fail'?' active-fail':'')+'" onclick="setAdminCheck(\''+item.id+'\',\'fail\')">✗</button><button class="status-btn'+(v==='na'?' active-na':'')+'" onclick="setAdminCheck(\''+item.id+'\',\'na\')">NA</button></div></div>';
+      return '<div class="check-item'+(isFail?' fail-needs-note':'')+'"><div class="check-content"><div class="check-text">'+item.text+ps+'</div><div class="check-rule">'+item.rule+'</div>'+(showNote?'<div class="check-note"><textarea placeholder="'+(isFail?'Corrective action...':'Add note...')+'" oninput="setAdminNoteNew(\''+item.id+'\',this.value)">'+note+'</textarea>'+(isFail&&!note.trim()?'<div class="note-required-label">\u26a0 Note required</div>':'')+'</div>':'<div class="note-toggle" onclick="var dd=getAdminDataForRole(currentAdminRole);if(!dd.notes)dd.notes={};dd.notes[\''+item.id+'\']=\' \';saveState();render();">+ Add note</div>')+'</div><div class="check-actions"><button class="status-btn'+(v==='pass'?' active-pass':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'pass\')">\u2713</button><button class="status-btn'+(v==='fail'?' active-fail':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'fail\')">\u2717</button><button class="status-btn'+(v==='na'?' active-na':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'na\')">NA</button></div></div>';
     }).join('');
-    return '<div class="category-section'+(secComplete?' section-complete':'')+'" id="cat-'+cat.id+'"><div class="category-header" onclick="state.openCategories[\''+cat.id+'\']=!state.openCategories[\''+cat.id+'\'];saveState();render()"><div class="category-icon" style="background:'+cat.color+'18;color:'+cat.color+'">'+cat.icon+'</div><div class="category-title">'+cat.title+(secComplete&&!isOpen?'<span class="section-done-badge">✓ Done</span>':'')+'</div><div class="category-count '+cntClass+'">'+ck+'/'+items.length+'</div><div class="category-toggle'+(isOpen?' open':'')+'">▼</div></div><div class="category-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
+    return '<div class="category-section'+(secDone?' section-complete':'')+'" id="cat-'+cat.id+'"><div class="category-header" onclick="state.openCategories[\''+cat.id+'\']=!state.openCategories[\''+cat.id+'\'];saveState();render()"><div class="category-icon" style="background:'+cat.color+'18;color:'+cat.color+'">'+cat.icon+'</div><div class="category-title">'+cat.title+(secDone&&!isOpen?'<span class="section-done-badge">\u2713 Done</span>':'')+'</div><div class="category-count '+cls+'">'+ck+'/'+items.length+'</div><div class="category-toggle'+(isOpen?' open':'')+'">\\u25bc</div></div><div class="category-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
   }).join('');
-  return '<div class="checker-layout">'+sidebar+'<div class="checker-main">'+header+sections+'</div></div>';
+  return '<div class="checker-layout">'+sb+'<div class="checker-main">'+hd+secs+'</div></div>';
 }
-
-function submitAdminToDashboard(){
-  if(!adminUser) return;
-  var d=getAdminData();var center=getCenter();if(!center)return;
-  var counts=getAdminCountsForUser(d, adminUser.id);var pct=getAdminProgressForUser(d, adminUser.id);
+function setAdminCheckNew(itemId,value){var d=getAdminDataForRole(currentAdminRole);if(!d.checkDates)d.checkDates={};if(d.checks[itemId]===value){delete d.checks[itemId];delete d.checkDates[itemId];saveState();render();return;}if(value==='fail'&&(!d.notes[itemId]||!d.notes[itemId].trim())){d.notes[itemId]=d.notes[itemId]||' ';d.checks[itemId]=value;d.checkDates[itemId]=new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});saveState();render();return;}d.checks[itemId]=value;d.checkDates[itemId]=new Date().toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});saveState();render();}
+function setAdminNoteNew(itemId,val){var d=getAdminDataForRole(currentAdminRole);if(!d.notes)d.notes={};d.notes[itemId]=val;saveState();}
+function submitAdminSection(){
+  var role=currentAdminRole;var d=getAdminDataForRole(role);var center=getCenterById(adminState.centerId);if(!center)return;
+  var counts=getAdminRoleCounts(d,role,adminState.centerId);var pct=getAdminRoleProgress(d,role,adminState.centerId);
   if(counts.unchecked>0&&!confirm('You have '+counts.unchecked+' unchecked items. Submit anyway?'))return;
-  var now=new Date();
-  var role = getAdminRoleForUser(adminUser.id);
-  var myCatIds = (ADMIN_ROLE_CATEGORIES[role] || ADMIN_CATEGORIES.map(function(c){return c.id;}));
-
-  var submission={
-    _id:_genId(),
-    type:'admin',
-    adminRole: role,
-    adminRoleLabel: ADMIN_ROLE_LABELS[role] || role,
-    sectionIds: myCatIds,
-    centerId:state.centerId,
-    centerName:center.name,
-    classroomId:'ADMIN',
-    classroomName:'Administrative',
-    ages:['admin'],
-    teacherName:adminUser.name,
-    inspectorId: adminUser.id,
-    inspectionDate:state.inspectionDate,
-    submittedDate:now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}),
-    submittedTime:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-    checks:JSON.parse(JSON.stringify(d.checks)),
-    notes:JSON.parse(JSON.stringify(d.notes||{})),
-    checkDates:JSON.parse(JSON.stringify(d.checkDates||{})),
-    pass:counts.pass,
-    fail:counts.fail,
-    na:counts.na,
-    completion:pct
-  };
+  var now=new Date();var mode=ADMIN_MODES[role];var catIds=getAdminCatsForRole(role).map(function(c){return c.id;});
+  var submission={_id:_genId(),type:'admin',adminRole:role,adminRoleLabel:mode.label,sectionIds:catIds,centerId:adminState.centerId,centerName:center.name,classroomId:'ADMIN',classroomName:'Administrative',ages:['admin'],teacherName:adminState.inspectorName,inspectionDate:d.inspectionDate||new Date().toISOString().split('T')[0],submittedDate:now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}),submittedTime:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),checks:JSON.parse(JSON.stringify(d.checks)),notes:JSON.parse(JSON.stringify(d.notes||{})),checkDates:JSON.parse(JSON.stringify(d.checkDates||{})),pass:counts.pass,fail:counts.fail,na:counts.na,completion:pct};
   if(!state.submissions)state.submissions=[];state.submissions.push(submission);cloudPost(submission,'compliance');
-  var key=getAdminKey();delete state.adminData[key];
-  state.adminScreen='setup';saveState();render();
-  showModal('<div class="modal-handle"></div><div style="text-align:center"><div style="font-size:3rem;margin-bottom:0.5rem;">✅</div><h3>Signed Off!</h3><p class="modal-desc"><strong>'+adminUser.name+'</strong> — '+(ADMIN_ROLE_LABELS[role]||role)+' sections submitted for <strong>'+center.name+'</strong>.<br><span style="font-size:0.75rem;color:var(--text-light);">'+submission.submittedDate+' at '+submission.submittedTime+'</span></p><div class="modal-btns"><button class="modal-btn primary" onclick="closeModal();switchMode(\'dashboard\')">View Dashboard →</button><button class="modal-btn" onclick="closeModal()">Done</button></div></div>');
+  delete state.adminData[getAdminDataKeyNew(role,adminState.centerId,adminState.inspectorName)];
+  adminState.screen='setup';adminState.inspectorName='';saveState();render();
+  showModal('<div class="modal-handle"></div><div style="text-align:center"><div style="font-size:3rem;margin-bottom:0.5rem;">\u2705</div><h3>Signed Off!</h3><p class="modal-desc"><strong>'+mode.label+'</strong> submitted for <strong>'+center.name+'</strong>.</p><div class="modal-btns"><button class="modal-btn primary" onclick="closeModal();switchMode(\'dashboard\')">View Dashboard \u2192</button><button class="modal-btn" onclick="closeModal()">Done</button></div></div>');
 }
 
 // ===== DASHBOARD =====
@@ -1461,12 +1345,7 @@ function saveUsers(){try{localStorage.setItem('mi_cc_users_v2',JSON.stringify(US
 function switchMode(mode){
   appMode=mode;
   if(mode==='dashboard'){dashViewMonth=getDashCurrentMonth();dashViewQuarter=getDashCurrentQuarter();try{var uid=localStorage.getItem('mi_cc_dash_user');if(uid){var u=USERS.find(function(x){return x.id===uid;});if(u){dashUser=u;if(!_cloudSynced)cloudLoad();}}}catch(e){}}
-  if(mode==='admin'){
-    if(!adminUser){
-      try{var uid=localStorage.getItem('mi_cc_admin_user');if(uid){var u=USERS.find(function(x){return x.id===uid;});if(u&&getAdminRoleForUser(u.id)){adminUser=u;}}}catch(e){}
-    }
-    if(!state.adminScreen)state.adminScreen='setup';
-  }
+  if(mode==='director'||mode==='hr'||mode==='records'){currentAdminRole=mode;adminState.screen='setup';}
   render();
 }
 
