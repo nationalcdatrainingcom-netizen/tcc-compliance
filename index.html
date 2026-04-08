@@ -1277,7 +1277,7 @@ function renderAdminCheckerView(role){
       var ps='';if(v==='pass')ps='<span class="print-status ps-pass">PASS</span>';else if(v==='fail')ps='<span class="print-status ps-fail">FAIL</span>';else if(v==='na')ps='<span class="print-status ps-na">N/A</span>';
       return '<div class="check-item'+(isFail?' fail-needs-note':'')+'"><div class="check-content"><div class="check-text">'+item.text+ps+'</div><div class="check-rule">'+item.rule+'</div>'+(showNote?'<div class="check-note"><textarea placeholder="'+(isFail?'Corrective action...':'Add note...')+'" oninput="setAdminNoteNew(\''+item.id+'\',this.value)">'+note+'</textarea>'+(isFail&&!note.trim()?'<div class="note-required-label">\u26a0 Note required</div>':'')+'</div>':'<div class="note-toggle" onclick="var dd=getAdminDataForRole(currentAdminRole);if(!dd.notes)dd.notes={};dd.notes[\''+item.id+'\']=\' \';saveState();render();">+ Add note</div>')+'</div><div class="check-actions"><button class="status-btn'+(v==='pass'?' active-pass':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'pass\')">\u2713</button><button class="status-btn'+(v==='fail'?' active-fail':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'fail\')">\u2717</button><button class="status-btn'+(v==='na'?' active-na':'')+'" onclick="setAdminCheckNew(\''+item.id+'\',\'na\')">NA</button></div></div>';
     }).join('');
-    return '<div class="category-section'+(secDone?' section-complete':'')+'" id="cat-'+cat.id+'"><div class="category-header" onclick="state.openCategories[\''+cat.id+'\']=!state.openCategories[\''+cat.id+'\'];saveState();render()"><div class="category-icon" style="background:'+cat.color+'18;color:'+cat.color+'">'+cat.icon+'</div><div class="category-title">'+cat.title+(secDone&&!isOpen?'<span class="section-done-badge">\u2713 Done</span>':'')+'</div><div class="category-count '+cls+'">'+ck+'/'+items.length+'</div><div class="category-toggle'+(isOpen?' open':'')+'">\\u25bc</div></div><div class="category-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
+    return '<div class="category-section'+(secDone?' section-complete':'')+'" id="cat-'+cat.id+'"><div class="category-header" onclick="state.openCategories[\''+cat.id+'\']=!state.openCategories[\''+cat.id+'\'];saveState();render()"><div class="category-icon" style="background:'+cat.color+'18;color:'+cat.color+'">'+cat.icon+'</div><div class="category-title">'+cat.title+(secDone&&!isOpen?'<span class="section-done-badge">\u2713 Done</span>':'')+'</div><div class="category-count '+cls+'">'+ck+'/'+items.length+'</div><div class="category-toggle'+(isOpen?' open':'')+'">\u25bc</div></div><div class="category-body'+(isOpen?' open':'')+'">'+body+'</div></div>';
   }).join('');
   return '<div class="checker-layout">'+sb+'<div class="checker-main">'+hd+secs+'</div></div>';
 }
@@ -1323,13 +1323,11 @@ var DEFAULT_USERS=[
 var USERS=loadUsers();
 function loadUsers(){
   try{var s=localStorage.getItem('mi_cc_users_v2');if(s){var u=JSON.parse(s);if(Array.isArray(u)&&u.length>0)return u;}}catch(e){}
-  // Migration: check old key, merge new users
   try{
     var old=localStorage.getItem('mi_cc_users');
     if(old){
       var oldUsers=JSON.parse(old);
       if(Array.isArray(oldUsers)&&oldUsers.length>0){
-        // Add kelsey and amy if missing
         var hasKelsey=oldUsers.some(function(u){return u.id==='kelsey';});
         var hasAmy=oldUsers.some(function(u){return u.id==='amy';});
         if(!hasKelsey)oldUsers.push({id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','montessori_center','niles']});
@@ -1404,7 +1402,6 @@ function renderDashboard(){
 }
 
 function renderDashLogin(){
-  // Only show users who have dashboard access (owners, directors, assistants)
   var dashEligible = USERS.filter(function(u){return u.role==='owner'||u.role==='director'||u.role==='assistant';});
   var opts=dashEligible.map(function(u){return '<option value="'+u.id+'">'+u.name+' — '+getDashRoleLabel(u.role)+' ('+getDashCenterNames(u)+')</option>';}).join('');
   return '<div class="login-screen"><div class="login-card"><div class="login-icon">🔒</div><h2>Director Dashboard</h2><p class="login-desc">Log in to view teacher self-inspections.</p><div class="form-group"><label>Your Name</label><select id="dashLoginUser"><option value="">Select your name...</option>'+opts+'</select></div><div class="form-group"><label>4-Digit PIN</label><input type="password" id="dashLoginPin" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" onkeydown="if(event.key===\'Enter\')dashDoLogin()"></div><button class="login-btn" onclick="dashDoLogin()">Log In</button><div class="login-error" id="dashLoginError"></div></div></div>';
@@ -1456,8 +1453,6 @@ function renderDashAdminTab(){
   var qNav='<div class="month-nav"><button class="month-btn" onclick="dashPrevQuarter()">← Prev</button><div class="month-nav-center"><div class="month-nav-label">'+getQuarterLabel(dashViewQuarter)+(isCurrent?'<span class="month-current-badge">Current</span>':'')+'</div><div class="month-nav-sub">'+(isCurrent?"This quarter's inspections":"Past records")+'</div></div><button class="month-btn" onclick="dashNextQuarter()"'+(canGoNext?'':' disabled')+'>Next →</button></div>';
   var avail=getDashAvailableQuarters();var pastQ=avail.filter(function(q){return q<curQ;});
   var chips='';if(pastQ.length>0||!isCurrent){chips='<div class="prev-months-bar"><span class="prev-months-label">Jump:</span><span class="prev-month-chip'+(isCurrent?' active':'')+'" onclick="dashSetQuarter(\''+curQ+'\')">'+getQuarterLabel(curQ)+'</span>';pastQ.forEach(function(q){chips+='<span class="prev-month-chip'+(dashViewQuarter===q?' active':'')+'" onclick="dashSetQuarter(\''+q+'\')">'+getQuarterLabel(q)+'</span>';});chips+='</div>';}
-
-  // Get admin submissions for this quarter
   var adminSubs = subs.filter(function(sub){
     if(sub.type!=='admin')return false;
     var subQ=getSubQuarter(sub);if(subQ!==dashViewQuarter)return false;
@@ -1465,39 +1460,27 @@ function renderDashAdminTab(){
     if(dashFilterCenter&&sub.centerId!==dashFilterCenter)return false;
     return true;
   });
-
-  // Build sign-off status per center
   var myCenters=[];CENTERS.forEach(function(c){if(dashCanSeeCenter(c.id)&&(!dashFilterCenter||c.id===dashFilterCenter))myCenters.push(c);});
-
-  // The three contributor roles
   var contributorRoles = [
     { role: 'records', label: "Children's Records", defaultPerson: 'Kelsey Wardlaw' },
     { role: 'hr', label: 'Staff Records & Qualifications', defaultPerson: 'Amy Gutierrez' },
     { role: 'director', label: 'Program Director', defaultPerson: null }
   ];
-
   var totalFails = 0;
   var totalSignoffs = 0;
-  var totalPossibleSignoffs = myCenters.length * 3; // 3 roles per center
-
+  var totalPossibleSignoffs = myCenters.length * 3;
   var centerCards = myCenters.map(function(c) {
     var centerSubs = adminSubs.filter(function(s) { return s.centerId === c.id; });
-
-    // Find which center director would be expected
     var directorUser = USERS.find(function(u) {
       return (u.role === 'director' || u.role === 'assistant') && u.centers.indexOf(c.id) !== -1;
     });
     var directorName = directorUser ? directorUser.name : 'Director';
-
     var signoffCards = contributorRoles.map(function(cr) {
       var matchingSub = null;
-      // Find a submission for this center+role in this quarter
       centerSubs.forEach(function(s) {
         if (s.adminRole === cr.role) matchingSub = s;
-        // Legacy submissions without adminRole — treat as director
         if (!s.adminRole && cr.role === 'director') matchingSub = s;
       });
-
       var person = cr.defaultPerson || directorName;
       if (matchingSub) {
         totalSignoffs++;
@@ -1508,18 +1491,13 @@ function renderDashAdminTab(){
         return '<div class="signoff-card pending"><div class="signoff-icon">🕑</div><div class="signoff-info"><div class="signoff-name">' + person + '</div><div class="signoff-detail">' + cr.label + ' · ' + (isCurrent ? 'Not yet completed' : 'No record') + '</div></div><span class="signoff-badge waiting">Pending</span></div>';
       }
     }).join('');
-
     var allSigned = centerSubs.length >= 3 || (contributorRoles.every(function(cr) {
       return centerSubs.some(function(s) { return s.adminRole === cr.role || (!s.adminRole && cr.role === 'director'); });
     }));
-
     return '<div class="admin-centers-section"><h3 class="admin-section-title">' + (allSigned ? '✅' : '🏢') + ' ' + c.name + '</h3>' + signoffCards + '</div>';
   }).join('');
-
   var numAwaiting = totalPossibleSignoffs - totalSignoffs;
   var stats = '<div class="d-stats-row"><div class="d-stat-card"><div class="sc-num">' + totalSignoffs + '</div><div class="sc-label">Sign-Offs</div></div><div class="d-stat-card"><div class="sc-num">' + myCenters.length + '</div><div class="sc-label">Centers</div></div><div class="d-stat-card"><div class="sc-num' + (numAwaiting > 0 ? ' orange' : '') + '">' + numAwaiting + '</div><div class="sc-label">Awaiting</div></div><div class="d-stat-card"><div class="sc-num' + (totalFails > 0 ? ' red' : '') + '">' + totalFails + '</div><div class="sc-label">Failed Items</div></div></div>';
-
-  // Detail table of all admin submissions
   var detailTable = '';
   if (adminSubs.length > 0) {
     var rows = adminSubs.map(function(sub, idx) {
@@ -1542,7 +1520,6 @@ function renderDashAdminTab(){
     }).join('');
     detailTable = '<div class="d-table-card" style="margin-top:1rem;"><table><thead><tr><th>Center</th><th>Inspector</th><th>Role</th><th>Date</th><th>%</th><th>P/F</th><th>Details</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
-
   return qNav + chips + stats + renderDashCenterFilter() + centerCards + detailTable;
 }
 
@@ -1581,17 +1558,57 @@ if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
   var p = new URLSearchParams(window.location.search);
   var u = p.get('hub_user');
   if (!u) return;
-  var ul = u.toLowerCase();
-  var m = USERS.find(function(x){ return x.name.toLowerCase() === ul || x.id === ul; });
+
+  // Strategy 1: Match by hub_username to compliance user ID (most reliable)
+  var hubUsername = p.get('hub_username');
+  var m = null;
+  if (hubUsername) {
+    var hul = hubUsername.toLowerCase();
+    m = USERS.find(function(x){ return x.id.toLowerCase() === hul; });
+  }
+
+  // Strategy 2: Match by full display name
+  if (!m) {
+    var ul = u.toLowerCase();
+    m = USERS.find(function(x){ return x.name.toLowerCase() === ul; });
+  }
+
+  // Strategy 3: Match by first name (handles "Mary Wardlaw" matching "Mary")
+  if (!m) {
+    var firstName = u.split(' ')[0].toLowerCase();
+    m = USERS.find(function(x){ return x.name.toLowerCase() === firstName || x.id.toLowerCase() === firstName; });
+  }
+
+  // Strategy 4: Owner/admin fallback - prefer matching first name
   if (!m) {
     var r = p.get('hub_role');
-    if (r === 'owner' || r === 'admin') m = USERS.find(function(x){ return x.role === 'owner'; });
+    if (r === 'owner' || r === 'admin') {
+      var fn = u.split(' ')[0].toLowerCase();
+      m = USERS.find(function(x){ return x.role === 'owner' && x.name.toLowerCase().indexOf(fn) === 0; });
+      if (!m) m = USERS.find(function(x){ return x.role === 'owner'; });
+    }
   }
+
+  // Strategy 5: Match by center for directors
+  if (!m) {
+    var hc = p.get('hub_center');
+    if (hc) {
+      var cm = {peace:'peace', niles:'niles', montessori:'montessori_center'};
+      var mappedCenter = cm[hc] || '';
+      if (mappedCenter) {
+        m = USERS.find(function(x){
+          return x.centers && x.centers.indexOf(mappedCenter) !== -1 &&
+                 (x.role === 'director' || x.role === 'assistant');
+        });
+      }
+    }
+  }
+
   if (m) {
     dashUser = m;
     dashFilterCenter = '';
     var hc = p.get('hub_center');
-    if (hc) {
+    if (hc && hc !== 'all') {
       var cm = {peace:'peace', niles:'niles', montessori:'montessori_center'};
       dashFilterCenter = cm[hc] || '';
     }
@@ -1601,6 +1618,7 @@ if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
     try { localStorage.setItem('mi_cc_dash_user', m.id); } catch(e) {}
     _cloudSynced = false;
     cloudLoad(function(){ render(); });
+    return;
   }
 })();
 render();
