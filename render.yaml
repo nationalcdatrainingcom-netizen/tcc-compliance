@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tcc-compliance
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tcc-compliance-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: tcc-compliance-db
+    plan: free
+    databaseName: tcc_compliance
+    user: tcc_compliance_user
