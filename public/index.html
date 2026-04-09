@@ -1049,45 +1049,26 @@ state.screen='setup'; state.adminScreen='setup';
 function saveState(){try{localStorage.setItem('mi_cc_v4',JSON.stringify(state));}catch(e){}}
 
 // ===== CLOUD SYNC =====
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxi4CN5azmrYTMF1eyvo3eG25GU_4mlgtnVanA00nEOyhXDu-qRUV-TGeWt_BFyqFNA/exec';
+var SCRIPT_URL = '/api/submissions';
 var _cloudLoading=false, _cloudError='', _cloudSynced=false;
 function _genId(){return Date.now().toString(36)+Math.random().toString(36).substr(2,9);}
-function cloudPost(submission, tab){
-  if(!SCRIPT_URL)return;
-  fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({tab:tab||'compliance',data:submission})}).catch(function(){});
+function cloudPost(submission){
+  fetch('/api/submissions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(submission)}).catch(function(){});
 }
 function cloudLoad(callback){
-  if(!SCRIPT_URL){_cloudLoading=false;if(callback)callback([]);return;}
   _cloudLoading=true;_cloudError='';render();
-  fetch(SCRIPT_URL+'?tab=compliance').then(function(r){return r.json();}).then(function(rows){
+  fetch('/api/submissions').then(function(r){return r.json();}).then(function(arr){
     _cloudLoading=false;
-    var raw=Array.isArray(rows)?rows:[];
-    var arr=[];
-    raw.forEach(function(row){
-      if(!row)return;
-      if(row._id||row.centerId){arr.push(row);return;}
-      var jsonStr=row['JSON Data']||row['json_data']||row['data']||row['JSON_Data']||'';
-      if(!jsonStr&&Array.isArray(row)){jsonStr=row[row.length-1]||'';}
-      if(jsonStr){
-        try{
-          var parsed=typeof jsonStr==='string'?JSON.parse(jsonStr):jsonStr;
-          if(parsed&&(parsed._id||parsed.centerId))arr.push(parsed);
-        }catch(e){}
-      }
-    });
+    if(!Array.isArray(arr)){arr=[];}
     var localIds={};(state.submissions||[]).forEach(function(s){if(s._id)localIds[s._id]=true;});
     var added=0;
     arr.forEach(function(s){
       if(s._id&&!localIds[s._id]){state.submissions.push(s);localIds[s._id]=true;added++;}
-      else if(!s._id){
-        var dupKey=(s.centerId||'')+'::'+( s.classroomId||'')+'::'+( s.inspectionDate||'')+'::'+( s.teacherName||'');
-        if(!localIds[dupKey]){s._id=dupKey;state.submissions.push(s);localIds[dupKey]=true;added++;}
-      }
     });
     if(added>0)saveState();
     _cloudSynced=true;if(callback)callback(arr);render();
   }).catch(function(e){
-    _cloudLoading=false;_cloudError='Could not connect to cloud. Showing local data only.';
+    _cloudLoading=false;_cloudError='Could not connect to server. Showing local data only.';
     _cloudSynced=true;if(callback)callback([]);render();
   });
 }
@@ -1236,7 +1217,7 @@ function doSubmit(){
   var submission={_id:_genId(),centerId:state.centerId,centerName:center.name,classroomId:state.classroomId,classroomName:room.name,ages:room.ages,teacherName:state.teacherName,inspectionDate:state.inspectionDate,submittedDate:now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}),submittedTime:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),checks:JSON.parse(JSON.stringify(data.checks)),notes:JSON.parse(JSON.stringify(data.notes)),checkDates:JSON.parse(JSON.stringify(data.checkDates||{})),pass:counts.pass,fail:counts.fail,na:counts.na,completion:pct};
   if(!state.submissions)state.submissions=[];
   state.submissions.push(submission);
-  cloudPost(submission,'compliance');
+  cloudPost(submission);
   delete state.allData[getKey()];
   state.teacherName='';state.inspectionDate=new Date().toISOString().split('T')[0];state.screen='setup';saveState();
   showModal('<div class="modal-handle"></div><div style="text-align:center"><div style="font-size:3rem;margin-bottom:0.5rem;">✅</div><h3>Submitted!</h3><p class="modal-desc"><strong>'+room.name+'</strong> inspection by <strong>'+submission.teacherName+'</strong> submitted.<br><span style="font-size:0.75rem;color:var(--text-light);">'+submission.submittedDate+' at '+submission.submittedTime+'</span></p><div class="modal-btns"><button class="modal-btn primary" onclick="closeModal();switchMode(\'dashboard\')">View Dashboard →</button><button class="modal-btn" onclick="closeModal();render()">Start Another</button></div></div>');
@@ -1290,7 +1271,7 @@ function submitAdminSection(){
   if(counts.unchecked>0&&!confirm('You have '+counts.unchecked+' unchecked items. Submit anyway?'))return;
   var now=new Date();var mode=ADMIN_MODES[role];var catIds=getAdminCatsForRole(role).map(function(c){return c.id;});
   var submission={_id:_genId(),type:'admin',adminRole:role,adminRoleLabel:mode.label,sectionIds:catIds,centerId:adminState.centerId,centerName:center.name,classroomId:'ADMIN',classroomName:'Administrative',ages:['admin'],teacherName:adminState.inspectorName,inspectionDate:d.inspectionDate||new Date().toISOString().split('T')[0],submittedDate:now.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}),submittedTime:now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),checks:JSON.parse(JSON.stringify(d.checks)),notes:JSON.parse(JSON.stringify(d.notes||{})),checkDates:JSON.parse(JSON.stringify(d.checkDates||{})),pass:counts.pass,fail:counts.fail,na:counts.na,completion:pct};
-  if(!state.submissions)state.submissions=[];state.submissions.push(submission);cloudPost(submission,'compliance');
+  if(!state.submissions)state.submissions=[];state.submissions.push(submission);cloudPost(submission);
   delete state.adminData[getAdminDataKeyNew(role,adminState.centerId,adminState.inspectorName)];
   adminState.screen='setup';adminState.inspectorName='';saveState();render();
   showModal('<div class="modal-handle"></div><div style="text-align:center"><div style="font-size:3rem;margin-bottom:0.5rem;">\u2705</div><h3>Signed Off!</h3><p class="modal-desc"><strong>'+mode.label+'</strong> submitted for <strong>'+center.name+'</strong>.</p><div class="modal-btns"><button class="modal-btn primary" onclick="closeModal();switchMode(\'dashboard\')">View Dashboard \u2192</button><button class="modal-btn" onclick="closeModal()">Done</button></div></div>');
@@ -1398,9 +1379,9 @@ function dashLogout(){dashUser=null;try{localStorage.removeItem('mi_cc_dash_user
 function renderDashboard(){
   if(!dashUser)return renderDashLogin();
   var syncBar='';
-  if(_cloudLoading){return '<div style="text-align:center;padding:3rem;"><div style="font-size:2rem;margin-bottom:0.5rem;">☁️</div><div style="font-size:1rem;color:var(--brand);">Loading from cloud...</div></div>';}
+  if(_cloudLoading){return '<div style="text-align:center;padding:3rem;"><div style="font-size:2rem;margin-bottom:0.5rem;">☁️</div><div style="font-size:1rem;color:var(--brand);">Loading data...</div></div>';}
   if(_cloudError){syncBar='<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:#92400e;">⚠️ '+_cloudError+' <button onclick="refreshDash()" style="margin-left:0.5rem;background:#f59e0b;color:white;border:none;border-radius:6px;padding:0.25rem 0.6rem;font-size:0.72rem;font-weight:800;cursor:pointer;">↺ Retry</button></div>';}
-  else if(SCRIPT_URL&&_cloudSynced){var lastSync=_lastSyncTime?(' · '+_lastSyncTime):'';syncBar='<div style="text-align:right;font-size:0.62rem;color:var(--text-light);margin-bottom:0.5rem;">☁️ Synced with cloud'+lastSync+' <button onclick="refreshDash()" style="margin-left:0.5rem;background:var(--brand-light);color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:0.15rem 0.5rem;font-size:0.65rem;font-weight:800;cursor:pointer;">↺ Refresh</button></div>';}
+  else if(_cloudSynced){var lastSync=_lastSyncTime?(' · '+_lastSyncTime):'';syncBar='<div style="text-align:right;font-size:0.62rem;color:var(--text-light);margin-bottom:0.5rem;">☁️ Synced'+lastSync+' <button onclick="refreshDash()" style="margin-left:0.5rem;background:var(--brand-light);color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:0.15rem 0.5rem;font-size:0.65rem;font-weight:800;cursor:pointer;">↺ Refresh</button></div>';}
   return syncBar+renderDashMain();
 }
 
