@@ -27,6 +27,30 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', app: 'TCC Compliance Checker', version: '2.0.0' });
 });
 
+// Manual DB init (one-time use)
+app.post('/api/init-db', async (req, res) => {
+  try {
+    await initDB();
+    const { pool } = require('./db');
+    const tables = await pool.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+    res.json({ success: true, tables: tables.rows.map(r => r.tablename) });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DB debug - check connection and tables
+app.get('/api/db-status', async (req, res) => {
+  try {
+    const { pool } = require('./db');
+    const tables = await pool.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+    const dbUrl = process.env.DATABASE_URL ? 'Set (' + process.env.DATABASE_URL.substring(0, 30) + '...)' : 'NOT SET';
+    res.json({ database_url: dbUrl, tables: tables.rows.map(r => r.tablename) });
+  } catch(err) {
+    res.json({ error: err.message, database_url: process.env.DATABASE_URL ? 'Set' : 'NOT SET' });
+  }
+});
+
 // Catch-all: serve index.html for SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
