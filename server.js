@@ -19,6 +19,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/analysis', require('./routes/analysis'));
 app.use('/api/report', require('./routes/report'));
+app.use('/api/submissions', require('./routes/submissions'));
+app.use('/api/migrate', require('./routes/migrate'));
 
 // Health check
 app.get('/api/health', (req, res) => {
