@@ -743,27 +743,17 @@ body {
 
 // ===== DATA =====
 var CENTERS = [
-  { id: 'peace', name: 'Peace Boulevard', classrooms: [
-    { id: 'caterpillars', name: 'Caterpillars', ages: ['infant'] },
-    { id: 'butterflies', name: 'Butterflies', ages: ['infant','toddler'] },
-    { id: 'dolphins', name: 'Dolphins', ages: ['toddler'] },
-    { id: 'kangas', name: 'Kangas', ages: ['toddler'] },
-    { id: 'lions', name: 'Lions', ages: ['toddler'] },
-    { id: 'bears', name: 'Bears', ages: ['preschool'] },
-    { id: 'montessori_pb', name: 'Montessori', ages: ['infant','toddler'] },
-    { id: 'tigers', name: 'Tigers', ages: ['preschool'] },
-    { id: 'penguins', name: 'Penguins', ages: ['preschool'] },
-    { id: 'dinos', name: 'Dinos', ages: ['preschool'] },
-    { id: 'flamingos_pb', name: 'Flamingos', ages: ['preschool','school-age'] }
-  ]},
-  { id: 'montessori_center', name: 'Montessori', classrooms: [
-    { id: 'green', name: 'Green', ages: ['infant','toddler'] },
-    { id: 'purple', name: 'Purple', ages: ['toddler'] },
-    { id: 'orange', name: 'Orange', ages: ['preschool'] },
-    { id: 'yellow', name: 'Yellow', ages: ['preschool'] },
-    { id: 'red', name: 'Red', ages: ['preschool'] },
-    { id: 'blue', name: 'Blue', ages: ['preschool'] },
-    { id: 'pink', name: 'Pink', ages: ['preschool'] }
+  { id: 'peace', name: 'Montessori', classrooms: [
+    { id: 'seedlings', name: 'Seedlings', ages: ['infant'] },
+    { id: 'sprouts', name: 'Sprouts', ages: ['infant','toddler'] },
+    { id: 'saplings_1', name: 'Saplings 1', ages: ['toddler'] },
+    { id: 'saplings_2', name: 'Saplings 2', ages: ['toddler'] },
+    { id: 'acorns', name: 'Acorns', ages: ['infant','toddler'] },
+    { id: 'maple', name: 'Maple', ages: ['preschool'] },
+    { id: 'spruce', name: 'Spruce', ages: ['preschool'] },
+    { id: 'willow', name: 'Willow', ages: ['preschool'] },
+    { id: 'oak', name: 'Oak', ages: ['preschool'] },
+    { id: 'redwood', name: 'Redwood', ages: ['preschool','school-age'] }
   ]},
   { id: 'niles', name: 'Niles', classrooms: [
     { id: 'tiny_treasures', name: 'Tiny Treasures', ages: ['infant'] },
@@ -1291,16 +1281,16 @@ var dashViewTab='classroom';
 var dashViewQuarter='';
 
 var DEFAULT_USERS=[
-  {id:'jared',name:'Jared',pin:'4401',role:'owner',centers:['peace','montessori_center','niles']},
-  {id:'mary',name:'Mary',pin:'4402',role:'owner',centers:['peace','montessori_center','niles']},
+  {id:'jared',name:'Jared',pin:'4401',role:'owner',centers:['peace','niles']},
+  {id:'mary',name:'Mary',pin:'4402',role:'owner',centers:['peace','niles']},
   {id:'gabby',name:'Gabby',pin:'2201',role:'director',centers:['peace']},
   {id:'savanna',name:'Savanna',pin:'2202',role:'assistant',centers:['peace']},
-  {id:'shari',name:'Shari',pin:'3301',role:'director',centers:['montessori_center']},
-  {id:'renee',name:'Renee',pin:'3302',role:'assistant',centers:['montessori_center']},
+  {id:'shari',name:'Shari',pin:'3301',role:'director',centers:['peace']},
+  {id:'renee',name:'Renee',pin:'3302',role:'assistant',centers:['peace']},
   {id:'kirsten',name:'Kirsten',pin:'5501',role:'director',centers:['niles']},
   {id:'amber',name:'Amber',pin:'5502',role:'assistant',centers:['niles']},
-  {id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','montessori_center','niles']},
-  {id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','montessori_center','niles']}
+  {id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','niles']},
+  {id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','niles']}
 ];
 var USERS=loadUsers();
 function loadUsers(){
@@ -1314,8 +1304,8 @@ function loadUsers(){
         // Add kelsey and amy if missing
         var hasKelsey=oldUsers.some(function(u){return u.id==='kelsey';});
         var hasAmy=oldUsers.some(function(u){return u.id==='amy';});
-        if(!hasKelsey)oldUsers.push({id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','montessori_center','niles']});
-        if(!hasAmy)oldUsers.push({id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','montessori_center','niles']});
+        if(!hasKelsey)oldUsers.push({id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','niles']});
+        if(!hasAmy)oldUsers.push({id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','niles']});
         localStorage.setItem('mi_cc_users_v2',JSON.stringify(oldUsers));
         return oldUsers;
       }
@@ -1598,7 +1588,7 @@ if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
   if (!m) {
     var hc = p.get('hub_center');
     if (hc) {
-      var cm = {peace:'peace', niles:'niles', montessori:'montessori_center'};
+      var cm = {peace:'peace', niles:'niles', montessori:'peace'};
       var mappedCenter = cm[hc] || '';
       if (mappedCenter) {
         m = USERS.find(function(x){
@@ -1614,7 +1604,7 @@ if(!dashViewQuarter)dashViewQuarter=getDashCurrentQuarter();
     dashFilterCenter = '';
     var hc = p.get('hub_center');
     if (hc && hc !== 'all') {
-      var cm = {peace:'peace', niles:'niles', montessori:'montessori_center'};
+      var cm = {peace:'peace', niles:'niles', montessori:'peace'};
       dashFilterCenter = cm[hc] || '';
     }
     dashViewMonth = getDashCurrentMonth();
