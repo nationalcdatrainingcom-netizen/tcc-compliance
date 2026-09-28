@@ -1050,12 +1050,30 @@ function cloudLoad(callback){
   fetch('/api/submissions').then(function(r){return r.json();}).then(function(arr){
     _cloudLoading=false;
     if(!Array.isArray(arr)){arr=[];}
-    var localIds={};(state.submissions||[]).forEach(function(s){if(s._id)localIds[s._id]=true;});
+    // The server is authoritative. Index local records by _id and REPLACE the
+    // ones the server also has, instead of skipping them. A submission's _id
+    // never changes, but its centre/classroom can (the 2026-09-21 room rename
+    // moved every Peace/Montessori record), and an add-only merge leaves every
+    // browser stuck on its stale copy for good - the dashboard then filters
+    // those records out because their old room ids aren't in CENTERS any more.
+    // Records that exist only locally (not yet synced) are preserved.
+    var byId={},order=[],n=0;
+    (state.submissions||[]).forEach(function(s){
+      if(!s)return;
+      var k=s._id||('__local_'+(n++));
+      if(!(k in byId))order.push(k);
+      byId[k]=s;
+    });
     var added=0;
     arr.forEach(function(s){
-      if(s._id&&!localIds[s._id]){state.submissions.push(s);localIds[s._id]=true;added++;}
+      if(!s||!s._id)return;
+      if(!(s._id in byId)){order.push(s._id);byId[s._id]=s;added++;}
+      else if(JSON.stringify(byId[s._id])!==JSON.stringify(s)){byId[s._id]=s;added++;}
     });
-    if(added>0)saveState();
+    if(added>0){
+      state.submissions=order.map(function(k){return byId[k];});
+      saveState();
+    }
     _cloudSynced=true;if(callback)callback(arr);render();
   }).catch(function(e){
     _cloudLoading=false;_cloudError='Could not connect to server. Showing local data only.';
