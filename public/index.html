@@ -1293,8 +1293,28 @@ var DEFAULT_USERS=[
   {id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','niles']}
 ];
 var USERS=loadUsers();
+// The 'montessori_center' centre was merged into 'peace' on 2026-09-21. Any
+// browser that used the app before then still holds the old centre id in
+// localStorage, and loadUsers() prefers stored users over DEFAULT_USERS - so
+// the reassignment never reached those devices. Because 'montessori_center' is
+// no longer in CENTERS, dashCanSeeCenter() can never match it and the affected
+// users (Shari, Renee) get a permanently empty dashboard. Rewrite it on load.
+function normalizeUserCenters(list){
+  var changed=false;
+  (list||[]).forEach(function(u){
+    if(!u||!Array.isArray(u.centers))return;
+    var out=[];
+    u.centers.forEach(function(c){
+      var m=(c==='montessori_center')?'peace':c;
+      if(m!==c)changed=true;
+      if(out.indexOf(m)===-1)out.push(m);
+    });
+    u.centers=out;
+  });
+  return changed;
+}
 function loadUsers(){
-  try{var s=localStorage.getItem('mi_cc_users_v2');if(s){var u=JSON.parse(s);if(Array.isArray(u)&&u.length>0)return u;}}catch(e){}
+  try{var s=localStorage.getItem('mi_cc_users_v2');if(s){var u=JSON.parse(s);if(Array.isArray(u)&&u.length>0){if(normalizeUserCenters(u)){try{localStorage.setItem('mi_cc_users_v2',JSON.stringify(u));}catch(e){}}return u;}}}catch(e){}
   // Migration: check old key, merge new users
   try{
     var old=localStorage.getItem('mi_cc_users');
@@ -1306,6 +1326,7 @@ function loadUsers(){
         var hasAmy=oldUsers.some(function(u){return u.id==='amy';});
         if(!hasKelsey)oldUsers.push({id:'kelsey',name:'Kelsey Wardlaw',pin:'6601',role:'records',centers:['peace','niles']});
         if(!hasAmy)oldUsers.push({id:'amy',name:'Amy Gutierrez',pin:'6602',role:'hr',centers:['peace','niles']});
+        normalizeUserCenters(oldUsers);
         localStorage.setItem('mi_cc_users_v2',JSON.stringify(oldUsers));
         return oldUsers;
       }
